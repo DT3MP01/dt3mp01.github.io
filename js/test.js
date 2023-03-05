@@ -6,7 +6,7 @@
 var renderer, scene, camera;
 var cameraControls;
 var angulo = -0.01;
-
+var canvas = document.getElementById("container");
 init();
 
 render();
