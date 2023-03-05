@@ -113,7 +113,8 @@ var specularColour = new THREE.Vector3(1.0, 1.0, 1.0);
 var scene = new THREE.Scene();
 //Sky scene
 var backgroundScene = new THREE.Scene();
-
+//Camera rotate
+var rotate = false;
 
 //Light for ground plane
 var ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
