@@ -9,9 +9,6 @@
 
 //There are two scenes: one for the sky/sun and another for the grass. The sky is rendered without depth information on a plane geometry that fills the screen. Automatic clearing is disabled and after the sky has been rendered, we draw the grass scene on top of the background. Both scenes share a camera and light direction information.
 
-var canvas = document.getElementById("container");
-
-
 //Variables for blade mesh
 var joints = 4;
 var bladeWidth = 0.12;
@@ -52,8 +49,6 @@ var shininess = 256;
 var sunColour = new THREE.Vector3(1.0, 1.0, 1.0);
 var specularColour = new THREE.Vector3(1.0, 1.0, 1.0);
 
-//Camera rotate
-var rotate = false;
 
 //Initialise three.js. There are two scenes which are drawn after one another with clear() called manually at the start of each frame
 //Grass scene
@@ -61,33 +56,11 @@ var scene = new THREE.Scene();
 //Sky scene
 var backgroundScene = new THREE.Scene();
 
-var renderer = new THREE.WebGLRenderer({antialias: true, canvas: canvas});
-var defaultPixelRatio = renderer.getPixelRatio();
-renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-
-//Camera
-distance = 1500;
-
-var FOV = 45;
-var camera = new THREE.PerspectiveCamera(FOV, canvas.clientWidth/canvas.clientHeight, 1, 20000);
-
-camera.position.set(-60, 10, 60);
-camera.lookAt(new THREE.Vector3(0,0,0));
-
-scene.add(camera);
-backgroundScene.add(camera);
 
 //Light for ground plane
 var ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
 scene.add(ambientLight);
 
-//OrbitControls.js for camera manipulation
-var controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.autoRotate = rotate;
-controls.autoRotateSpeed = 1.0;
-controls.maxDistance = 200.0;
 
 // //Disable keys to stop arrow keys from moving the camera
 // controls.enableKeys = false;

@@ -55,6 +55,17 @@ function render()
 
 
 
+//Update of
+//https://al-ro.github.io/projects/grass-old
+//Added lighting, translucency and movement on an infinite world
+
+//Based on:
+//"Realistic real-time grass rendering" by Eddie Lee, 2010
+//https://www.eddietree.com/grass
+//https://en.wikibooks.org/wiki/GLSL_Programming/Unity/Translucent_Surfaces
+
+//There are two scenes: one for the sky/sun and another for the grass. The sky is rendered without depth information on a plane geometry that fills the screen. Automatic clearing is disabled and after the sky has been rendered, we draw the grass scene on top of the background. Both scenes share a camera and light direction information.
+
 //Variables for blade mesh
 var joints = 4;
 var bladeWidth = 0.12;
@@ -68,7 +79,7 @@ var resolution = 64;
 var delta = width/resolution;
 //User movement speed
 var speed = 3;
-//SUN
+
 //The global coordinates
 //The geometry never leaves a box of width*width around (0, 0)
 //But we track where in space the camera would be globally
@@ -76,6 +87,15 @@ var pos = new THREE.Vector2(0.01, 0.01);
 
 //Number of blades
 var instances = 100000;
+
+
+//Sun
+//Height over horizon in range [0, PI/2.0]
+var elevation = 0.2;
+//Rotation around Y axis in range [0, 2*PI]
+var azimuth = 0.4;
+
+var fogFade = 0.005;
 
 //Lighting variables for grass
 var ambientStrength = 0.7;
@@ -87,6 +107,55 @@ var sunColour = new THREE.Vector3(1.0, 1.0, 1.0);
 var specularColour = new THREE.Vector3(1.0, 1.0, 1.0);
 
 
+//Initialise three.js. There are two scenes which are drawn after one another with clear() called manually at the start of each frame
+//Grass scene
+var scene = new THREE.Scene();
+//Sky scene
+var backgroundScene = new THREE.Scene();
+
+
+//Light for ground plane
+var ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
+scene.add(ambientLight);
+
+
+// //Disable keys to stop arrow keys from moving the camera
+// controls.enableKeys = false;
+// controls.update();
+
+// const stats = new Stats();
+// stats.showPanel(0);
+// stats.domElement.style.position = 'relative';
+// stats.domElement.style.bottom = '48px';
+// document.getElementById('canvas_container').appendChild(stats.domElement);
+
+// //************* GUI ***************
+// var gui = new dat.GUI({ autoPlace: false });
+// var customContainer = document.getElementById('gui_container');
+// customContainer.appendChild(gui.domElement);
+// gui.add(this, 'speed').min(0.5).max(10).step(0.01);
+// gui.add(this, 'elevation').min(0.0).max(Math.PI/2.0).step(0.01).listen().onChange(function(value){updateSunPosition();});
+// gui.add(this, 'azimuth').min(0.0).max(Math.PI*2.0).step(0.01).listen().onChange(function(value){updateSunPosition();});
+// gui.add(this, 'fogFade').min(0.001).max(0.01).step(0.0001).listen().onChange(function(value){backgroundMaterial.uniforms.fogFade.value = fogFade;});
+// gui.close();
+
+// window.addEventListener('resize', onWindowResize, false);
+// function onWindowResize(){
+//   let w = canvas.clientWidth;
+//   let h = canvas.clientHeight;
+//   if(!isInFullscreen()){
+//     renderer.setPixelRatio( window.devicePixelRatio );
+//     h = w/1.6;
+//   }else{
+//     //Reduce resolution at full screen for better performance
+//     renderer.setPixelRatio( defaultPixelRatio );
+//   }
+//   camera.aspect = w / h;
+//   renderer.setSize(w, h, false);
+//   backgroundMaterial.uniforms.resolution.value = new THREE.Vector2(canvas.width, canvas.height);
+//   camera.updateProjectionMatrix();
+// }
+
 //Get alpha map and blade texture
 //These have been taken from "Realistic real-time grass rendering" by Eddie Lee, 2010
 var loader = new THREE.TextureLoader();
@@ -97,6 +166,112 @@ var noiseTexture = loader.load( 'https://al-ro.github.io/images/grass/perlinFbm.
 noiseTexture.wrapS = THREE.RepeatWrapping;
 noiseTexture.wrapT = THREE.RepeatWrapping;
 
+//************** Sky **************
+//https://discourse.threejs.org/t/how-do-i-use-my-own-custom-shader-as-a-scene-background/13598/2
+const backgroundMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    sunDirection: {type: 'vec3', value: new THREE.Vector3(Math.sin(azimuth), Math.sin(elevation), -Math.cos(azimuth))},
+    resolution: {type: 'vec2', value: new THREE.Vector2(canvas.width, canvas.height)},
+    fogFade: {type: 'float', value: fogFade},
+    fov: {type: 'float', value: FOV}
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      gl_Position = vec4( position, 1.0 );    
+    }
+  `,
+  fragmentShader: `
+    varying vec2 vUv;
+    uniform vec2 resolution;
+    uniform vec3 sunDirection;
+    uniform float fogFade;
+    uniform float fov;
+    
+    const vec3 skyColour = 0.65 * vec3(0.09, 0.33, 0.81);
+    //Darken sky when looking up
+    vec3 getSkyColour(vec3 rayDir){
+      return mix(0.35*skyColour, skyColour, pow(1.0-rayDir.y, 4.0));
+    }
+    
+    //https://iquilezles.org/www/articles/fog/fog.htm
+    vec3 applyFog(vec3 rgb, vec3 rayOri, vec3 rayDir, vec3 sunDir){
+      //Make horizon more hazy
+      float dist = 4000.0;
+      if(abs(rayDir.y) < 0.0001){rayDir.y = 0.0001;}
+      float fogAmount = 1.0 * exp(-rayOri.y*fogFade) * (1.0-exp(-dist*rayDir.y*fogFade))/rayDir.y;
+      float sunAmount = max( dot( rayDir, sunDir ), 0.0 );
+      vec3 fogColor  = mix(vec3(0.35, 0.5, 0.9), vec3(1.0, 1.0, 0.75), pow(sunAmount, 16.0) );
+      return mix(rgb, fogColor, clamp(fogAmount, 0.0, 1.0));
+    }
+    
+    vec3 ACESFilm(vec3 x){
+      float a = 2.51;
+      float b = 0.03;
+      float c = 2.43;
+      float d = 0.59;
+      float e = 0.14;
+      return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+    }
+    
+    vec3 rayDirection(float fieldOfView, vec2 fragCoord) {
+      vec2 xy = fragCoord - resolution.xy / 2.0;
+      float z = (0.5 * resolution.y) / tan(radians(fieldOfView) / 2.0);
+      return normalize(vec3(xy, -z));
+    }
+    
+    //https://www.geertarien.com/blog/2017/07/30/breakdown-of-the-lookAt-function-in-OpenGL/
+    mat3 lookAt(vec3 camera, vec3 at, vec3 up){
+      vec3 zaxis = normalize(at-camera);    
+      vec3 xaxis = normalize(cross(zaxis, up));
+      vec3 yaxis = cross(xaxis, zaxis);
+    
+      return mat3(xaxis, yaxis, -zaxis);
+    }
+    
+    float getGlow(float dist, float radius, float intensity){
+      dist = max(dist, 1e-6);
+      return pow(radius/dist, intensity);	
+    }
+    
+    void main() {
+    
+      vec3 target = vec3(0.0, 0.0, 0.0);
+      vec3 up = vec3(0.0, 1.0, 0.0);
+      vec3 rayDir = rayDirection(fov, gl_FragCoord.xy);
+    
+      //Get the view matrix from the camera orientation
+      mat3 viewMatrix_ = lookAt(cameraPosition, target, up);
+    
+      //Transform the ray to point in the correct direction
+      rayDir = viewMatrix_ * rayDir;
+    
+      vec3 col = getSkyColour(rayDir);
+    
+      //Draw sun
+      vec3 sunDir = normalize(sunDirection);
+      float mu = dot(sunDir, rayDir);
+      col += vec3(1.0, 1.0, 0.8) * getGlow(1.0-mu, 0.00005, 0.9);
+    
+      col += applyFog(col, vec3(0,1000,0), rayDir, sunDir);
+    
+      //Tonemapping
+      col = ACESFilm(col);
+    
+      //Gamma correction 1.0/2.2 = 0.4545...
+      col = pow(col, vec3(0.4545));
+    
+      gl_FragColor = vec4(col, 1.0 );
+    }
+   `
+});
+
+backgroundMaterial.depthWrite = false;
+var backgroundGeometry = new THREE.PlaneBufferGeometry(2, 2, 1, 1);
+var background = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+backgroundScene.add(background);
+
+renderer.autoClear = false;
 
 //************** Ground **************
 //Ground material is a modification of the existing THREE.MeshPhongMaterial rather than one from scratch
@@ -529,32 +704,123 @@ vertexShader: grassVertexSource,
 var grass = new THREE.Mesh(instancedGeometry, grassMaterial);
 scene.add(grass);
 
-// //************** Draw **************
-// var time = 0;
-// var lastFrame = Date.now();
-// var thisFrame;
+//************** User movement **************
+var forward = false;
+var backward = false;
+var left = false;
+var right = false;
+function keyDown(e){
+  if(e.keyCode == 38 || e.keyCode == 40){
+    e.preventDefault();
+  }
+  if(e.keyCode == 87 || e.keyCode == 38) {
+    forward = true;
+  }
+  if(e.keyCode == 83 || e.keyCode == 40) {
+    backward = true;
+  }
+  if(e.keyCode == 65 || e.keyCode == 37) {
+    left = true;
+  }
+  if(e.keyCode == 68 || e.keyCode == 39) {
+    right = true;
+  }
+};
 
-// function draw(){
-//   stats.begin();
+function keyUp(e){
+  if(e.keyCode == 87 || e.keyCode == 38) {
+    forward = false;
+  }
+  if(e.keyCode == 83 || e.keyCode == 40) {
+    backward = false;
+  }
+  if(e.keyCode == 65 || e.keyCode == 37) {
+    left = false;
+  }
+  if(e.keyCode == 68 || e.keyCode == 39) {
+    right = false;
+  }
+};
 
-//   //Update time
-//   thisFrame = Date.now();
-//   dT = (thisFrame - lastFrame)/200.0;
-//   time += dT;	
-//   move(dT);
-//   lastFrame = thisFrame;
+document.addEventListener('keydown', keyDown);
+document.addEventListener('keyup', keyUp);
 
-//   grassMaterial.uniforms.time.value = time;
+function cross(a, b){
+  return {x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  }; 
+}
 
-//   renderer.clear();
-//   renderer.render(backgroundScene, camera);
-//   renderer.render(scene, camera);
+var viewDirection = new THREE.Vector3();
+var upVector = new THREE.Vector3(0,1,0);
 
-//   if(rotate){
-//     controls.update();
-//   }
-//   stats.end();
-//   requestAnimationFrame(draw);
-// }
+function move(dT){
 
-// draw();
+  camera.getWorldDirection(viewDirection);
+  length = Math.sqrt(viewDirection.x*viewDirection.x + viewDirection.z*viewDirection.z);
+  viewDirection.x /= length;
+  viewDirection.z /= length;
+  if(forward){
+    pos.x += dT * speed * viewDirection.x;
+    pos.y += dT * speed * viewDirection.z;
+  }
+  if(backward){
+    pos.x -= dT * speed * viewDirection.x;
+    pos.y -= dT * speed * viewDirection.z;
+  }
+  if(left){
+    var rightVector = cross(upVector, viewDirection);
+    pos.x += dT * speed * rightVector.x;
+    pos.y += dT * speed * rightVector.z;
+  }
+  if(right){
+    var rightVector = cross(upVector, viewDirection);
+    pos.x -= dT * speed * rightVector.x;
+    pos.y -= dT * speed * rightVector.z;
+  }
+
+  if(groundShader){
+    groundShader.uniforms.posX.value = pos.x;
+    groundShader.uniforms.posZ.value = pos.y;
+  }
+  grassMaterial.uniforms.posX.value = pos.x;
+  grassMaterial.uniforms.posZ.value = pos.y;
+}
+
+//******* Sun uniform update *******
+function updateSunPosition(){
+  var sunDirection = new THREE.Vector3(Math.sin(azimuth), Math.sin(elevation), -Math.cos(azimuth));
+  grassMaterial.uniforms.sunDirection.value = sunDirection;
+  backgroundMaterial.uniforms.sunDirection.value = sunDirection;
+}
+
+//************** Draw **************
+var time = 0;
+var lastFrame = Date.now();
+var thisFrame;
+
+function draw(){
+  // stats.begin();
+
+  //Update time
+  thisFrame = Date.now();
+  dT = (thisFrame - lastFrame)/200.0;
+  time += dT;	
+  move(dT);
+  lastFrame = thisFrame;
+
+  grassMaterial.uniforms.time.value = time;
+
+  renderer.clear();
+  renderer.render(backgroundScene, camera);
+  renderer.render(scene, camera);
+
+  if(rotate){
+    controls.update();
+  }
+  // stats.end();
+  requestAnimationFrame(draw);
+}
+
+draw();
