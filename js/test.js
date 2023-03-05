@@ -73,7 +73,7 @@ var bladeWidth = 0.12;
 var bladeHeight = 1;
 
 //Patch side length
-var width = 215;
+var width = 400;
 //Number of vertices on ground plane side
 var resolution = 64;
 //Distance between two ground plane vertices
@@ -290,7 +290,7 @@ var groundMaterial = new THREE.MeshPhongMaterial({color: new THREE.Color("rgb(10
 var sharedPrefix = `
   uniform sampler2D noiseTexture;
   float getYPosition(vec2 p){
-    return 15.0*(2.0*texture2D(noiseTexture, p/800.0).r - 1.0);
+    return 1;
   }
 `;
 
