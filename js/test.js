@@ -70,7 +70,7 @@ function render()
 //Variables for blade mesh
 var joints = 4;
 var bladeWidth = 0.12;
-var bladeHeight = 1.5;
+var bladeHeight = 1;
 
 //Patch side length
 var width = 215;
