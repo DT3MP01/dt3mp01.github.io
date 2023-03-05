@@ -73,7 +73,7 @@ var bladeWidth = 0.12;
 var bladeHeight = 1;
 
 //Patch side length
-var width = 4000;
+var width = 215;
 //Number of vertices on ground plane side
 var resolution = 64;
 //Distance between two ground plane vertices
