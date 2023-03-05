@@ -6,6 +6,7 @@
 var renderer, scene, camera;
 var cameraControls;
 var angulo = -0.01;
+var FOV = 45;
 var canvas = document.getElementById("container");
 init();
 
@@ -21,8 +22,8 @@ function init()
   scene = new THREE.Scene();
 
   var aspectRatio = window.innerWidth / window.innerHeight;
-  camera = new THREE.PerspectiveCamera( 50, aspectRatio , 0.1, 100 );
-  camera.position.set( 1, 1.5, 2 );
+  camera = new THREE.PerspectiveCamera( FOV, aspectRatio ,  1, 20000 );
+  camera.position.set(-60, 10, 60);
   camera.lookAt(0,0,0);
 
   cameraControls = new THREE.OrbitControls( camera, renderer.domElement );
