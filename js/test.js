@@ -69,9 +69,6 @@ var delta = width/resolution;
 //User movement speed
 var speed = 3;
 //SUN
-var azimuth = 0.4;
-
-
 //The global coordinates
 //The geometry never leaves a box of width*width around (0, 0)
 //But we track where in space the camera would be globally
