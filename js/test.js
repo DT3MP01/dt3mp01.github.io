@@ -69,7 +69,7 @@ function render()
 
 //Variables for blade mesh
 var joints = 4;
-var bladeWidth = 0.12;
+var bladeWidth = 0.3;
 var bladeHeight = 1;
 
 //Patch side length
@@ -290,7 +290,7 @@ var groundMaterial = new THREE.MeshPhongMaterial({color: new THREE.Color("rgb(10
 var sharedPrefix = `
   uniform sampler2D noiseTexture;
   float getYPosition(vec2 p){
-    return 15.0*(2.0*texture2D(noiseTexture, p/800.0).r - 1.0);
+    return 15.0;
   }
 `;
 
