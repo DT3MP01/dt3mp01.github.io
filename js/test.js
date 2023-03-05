@@ -3,7 +3,7 @@
   @author luialza1@upv.es 
 */
 
-var renderer, scene, camera, cubo;
+var renderer, scene, camera;
 var cameraControls;
 var angulo = -0.01;
 
@@ -29,8 +29,6 @@ function init()
   cameraControls.target.set( 0, 0, 0 );
 
   window.addEventListener('resize', updateAspectRatio );
-  var grass = new THREE.Mesh(instancedGeometry, grassMaterial);
-  scene.add(grass);
 }
 
 
@@ -46,9 +44,6 @@ function update()
   // Cambios para actualizar la camara segun mvto del raton
   cameraControls.update();
 
-  // Movimiento propio del cubo
-  cubo.rotation.y += angulo;
-  cubo.rotation.x += angulo/2;
 }
 
 function render()
@@ -531,7 +526,35 @@ vertexShader: grassVertexSource,
   side: THREE.DoubleSide
   } );
 
+var grass = new THREE.Mesh(instancedGeometry, grassMaterial);
+scene.add(grass);
 
+// //************** Draw **************
+// var time = 0;
+// var lastFrame = Date.now();
+// var thisFrame;
 
+// function draw(){
+//   stats.begin();
 
+//   //Update time
+//   thisFrame = Date.now();
+//   dT = (thisFrame - lastFrame)/200.0;
+//   time += dT;	
+//   move(dT);
+//   lastFrame = thisFrame;
 
+//   grassMaterial.uniforms.time.value = time;
+
+//   renderer.clear();
+//   renderer.render(backgroundScene, camera);
+//   renderer.render(scene, camera);
+
+//   if(rotate){
+//     controls.update();
+//   }
+//   stats.end();
+//   requestAnimationFrame(draw);
+// }
+
+// draw();
