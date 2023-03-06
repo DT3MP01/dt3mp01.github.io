@@ -2,6 +2,7 @@
   test.js
   @author luialza1@upv.es 
 */
+import * as THREE from "../lib/three.module.js";
 import {GLTFLoader} from "../lib/GLTFLoader.module.js";
 
 var renderer, scene, camera;
