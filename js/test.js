@@ -2,6 +2,8 @@
   test.js
   @author luialza1@upv.es 
 */
+import {GLTFLoader} from "../lib/GLTFLoader.module.js";
+
 var renderer, scene, camera;
 var cameraControls;
 var angulo = -0.01;
