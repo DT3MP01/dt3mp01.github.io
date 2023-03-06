@@ -2,6 +2,7 @@
   test.js
   @author luialza1@upv.es 
 */
+import {GLTFLoader} from "../lib/GLTFLoader.module.js";
 
 var renderer, scene, camera;
 var cameraControls;
@@ -63,6 +64,7 @@ function loadScene()
     glloader.load( 'models/mushrom/scene.gltf', function ( gltf ) {
         gltf.scene.position.y = 1;
         gltf.scene.rotation.y = -Math.PI/2;
+        gltf.scene.scale.set(0.1,0.1,0.1)
         scene.add( gltf.scene );
     
     }, undefined, function ( error ) {
