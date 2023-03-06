@@ -9,7 +9,7 @@ var angulo = -0.01;
 var FOV = 45;
 var canvas = document.getElementById("container");
 init();
-
+loadScene()
 render();
 
 function init()
